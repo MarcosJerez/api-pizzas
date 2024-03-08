@@ -34,7 +34,7 @@ class Pizza {
     #[ORM\Column]
     private ?\DateTimeImmutable $updatedAt = null;
 
-    #[ORM\Column]
+    #[ORM\Column(nullable: true)]
     #[Assert\NotNull(groups: ['insert'])]
     #[ApiFilter(ExistsFilter::class, properties: ["special"], arguments: ["existence"])]
     private ?bool $special = null;

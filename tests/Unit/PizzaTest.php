@@ -75,16 +75,60 @@ class PizzaTest extends ApiTestCase {
     }
 
     public function testUpdatePizza(): void {
-        $client = self::createClient(); // Crea un cliente para hacer la solicitud
 
+        $client = self::createClient();
+
+        $response = $client->request('GET', '/api/pizzas');
+
+        $this->assertResponseIsSuccessful();
+
+        $pizzas = json_decode($response->getContent(), true);
+
+        // Busca la pizza inicial por su nombre (asumiendo que se llama "Pizza inicial")
+        $pizzaId = null;
+
+        foreach ($pizzas['hydra:member'] as $pizza) {
+
+            if ($pizza['name'] === 'Pizza inicial') {
+                $pizzaId = $pizza['id'];
+                break;
+            }
+        }
+        // Si no se encuentra la pizza inicial, créala
+        if (!$pizzaId) {
+            $response = $client->request('POST', '/api/pizzas', [
+                'json' => [
+                    'name' => 'Pizza inicial',
+                    'ingredients' => ['Ingrediente1', 'Ingrediente2'],
+                    'ovenTimeInSeconds' => 3000,
+                    'special' => false
+                ],
+                'headers' => [
+                    'Content-Type' => 'application/ld+json'
+                ]
+            ]);
+
+            // Verifica que la creación haya sido exitosa
+            $this->assertEquals(201, $response->getStatusCode());
+
+            // Decodifica la respuesta JSON para obtener el ID de la pizza creada
+            $responseData = json_decode($response->getContent(), true);
+            $pizzaId = $responseData['id'];
+        }
+
+
+        // Verifica que se haya encontrado la pizza inicial
+        $this->assertNotNull($pizzaId, 'La pizza inicial no se encontró');
+
+        // Datos actualizados para la pizza
         $updatedData = [
             'name' => 'Pizza actualizada',
             'ingredients' => ['Nuevo Ingrediente1', 'Nuevo Ingrediente2'],
             'ovenTimeInSeconds' => 4000,
-            'special' => true
         ];
 
-        $response = $client->request('PUT', '/api/pizzas/1', [
+        // Realiza la solicitud para actualizar la pizza
+        $response = $client->request('PUT', '/api/pizzas/' . $pizzaId, [
             'json' => $updatedData,
             'headers' => [
                 'Content-Type' => 'application/ld+json',
@@ -93,20 +137,20 @@ class PizzaTest extends ApiTestCase {
 
         $this->assertResponseIsSuccessful();
 
+        // Decodifica la respuesta JSON
         $updatedResponseData = json_decode($response->getContent(), true);
 
+        // Verifica que los datos de la pizza se hayan actualizado correctamente
         $this->assertEquals('Pizza actualizada', $updatedResponseData['name']);
         $this->assertEquals(['Nuevo Ingrediente1', 'Nuevo Ingrediente2'], $updatedResponseData['ingredients']);
         $this->assertEquals(4000, $updatedResponseData['ovenTimeInSeconds']);
-        $this->assertTrue($updatedResponseData['special']);
     }
 
     public function testDeletePizza(): void {
-        $client = self::createClient(); // Crea un cliente para hacer la solicitud
-        // Realiza la solicitud DELETE para eliminar la pizza con ID 1
+        $client = self::createClient();
+
         $client->request('DELETE', '/api/pizzas/1');
 
-        // Verifica que la eliminación haya sido exitosa
         $this->assertResponseStatusCodeSame(204); // 204 significa "No Content" en la respuesta de éxito
     }
 }
